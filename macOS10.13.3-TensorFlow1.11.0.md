@@ -10,13 +10,13 @@ NVDAEGPUSupport: 6
 
 XCode: 8.2
 
-Bazel: 0.9.0
+Bazel: 0.15.2(\>=0.15.0)
 
 OpenMP: latest
 
-Python: 3.6
+Python: 3.6.5
 
-TensorFlow: 1.5.0
+TensorFlow: 1.11.0
 
 <https://qiita.com/74th/items/fc6ebb684c23f3655e7c>
 
@@ -26,8 +26,10 @@ TensorFlow: 1.5.0
 
 [http://melonteam.com/posts/pei\_zhi\_tensorflow\_gpu\_ban\_ben\_tian\_keng\_lu/](http://melonteam.com/posts/pei_zhi_tensorflow_gpu_ban_ben_tian_keng_lu/)
 
-eGPU part
-=========
+<https://tweakmind.com/tensorflow-1-5-macos-10-13-2/>
+
+eGPU part(out of date, find the latest solutions at egpu.io)
+============================================================
 
 <https://egpu.io/forums/mac-setup/wip-nvidia-egpu-support-for-high-sierra/>
 
@@ -153,9 +155,6 @@ brew install cliutils/apple/libomp
 4 Install bazel
 
 ```sh
-cd /usr/local/Homebrew/Library/Taps/homebrew/homebrew-core
-git checkout bd8bba7e7 Formula/bazel.rb
-brew remove bazel —force
 brew install bazel
 bazel version
 ```
@@ -195,13 +194,16 @@ Install TensorFlow
 ```sh
 conda create --p egpu python=3.6
 source activate egpu
-pip install six numpy wheel
+pip install six numpy wheel mock
+pip install keras_applications==1.0.5 --no-deps
+pip install keras_preprocessing==1.0.3 --no-deps
+pip install h5py==2.8.0
 ```
 
 2 Clone TensorFlow code
 
 ```sh
-git clone https://github.com/tensorflow/tensorflow.git -b v1.5.0
+git clone https://github.com/tensorflow/tensorflow.git -b v1.11.0
 ```
 
 3 Modify the code, to make it compatible with macOS
@@ -209,36 +211,42 @@ git clone https://github.com/tensorflow/tensorflow.git -b v1.5.0
 ```sh
 cd tensorflow
 sed -i -e "s/ __align__(sizeof(T))//g" tensorflow/core/kernels/concat_lib_gpu_impl.cu.cc
-sed -i -e "s/ __align__(sizeof(T))//g" tensorflow/core/kernels/depthwise_conv_op_gpu.cu.cc
 sed -i -e "s/ __align__(sizeof(T))//g" tensorflow/core/kernels/split_lib_gpu.cu.cc
+sed -i -e "s/const Subgraph\:\:Identity empty_parent/Subgraph\:\:Identity empty_parent/g" tensorflow/core/grappler/graph_analyzer/graph_analyzer.cc
+#disable nccl
+sed -i -e "s/\"\/\/tensorflow\/contrib\/nccl/\#\"\/\/tensorflow\/contrib\/nccl/g" tensorflow/contrib/BUILD
+sed -i -e "s/\"\/\/tensorflow\/contrib\/nccl/\#\"\/\/tensorflow\/contrib\/nccl/g" tensorflow/contrib/all_reduce/BUILD
+sed -i -e "s/\"\/\/tensorflow\/contrib\/nccl/\#\"\/\/tensorflow\/contrib\/nccl/g" tensorflow/contrib/distribute/python/BUILD
 ```
 
 4 Compile the code
 
 ```sh
 ./configure
-  #Please specify the location of python.: Accept the default option
-	#Please input the desired Python library path to use.:  Accept the default option
-	#Do you wish to build TensorFlow with Google Cloud Platform support? [Y/n]: n
-	#Do you wish to build TensorFlow with Hadoop File System support? [Y/n]: n
-	#Do you wish to build TensorFlow with Amazon S3 File System support? [Y/n]: n
-	#Do you wish to build TensorFlow with XLA JIT support? [y/N]: n
-	#Do you wish to build TensorFlow with GDR support? [y/N]: n
-	#Do you wish to build TensorFlow with VERBS support? [y/N]: n
-	#Do you wish to build TensorFlow with OpenCL SYCL support? [y/N]: n
-	#Do you wish to build TensorFlow with CUDA support? [y/N]: y
-	#Please specify the CUDA SDK version you want to use, e.g. 7.0.: 9.1
-	#Please specify the location where CUDA 9.1 toolkit is installed.: Accept the default option
-	#Please specify the cuDNN version you want to use.: 7
-	#Please specify the location where cuDNN 7 library is installed.: Accept the default option
-	##Please specify a list of comma-separated Cuda compute capabilities you want to build with.
-	##You can find the compute capability of your device at: https://developer.nvidia.com/cuda-gpus. (GTX10X0: 6.1, GTX9X0: 5.2)
-	#Please note that each additional compute capability significantly increases your build time and binary size.: 6.1
-	#Do you want to use clang as CUDA compiler? [y/N]: n
-	#Please specify which gcc should be used by nvcc as the host compiler.: Accept the default option
-	#Do you wish to build TensorFlow with MPI support? [y/N]: n
-	#Please specify optimization flags to use during compilation when bazel option "--config=opt" is specified:  Accept the default option
-	#Would you like to interactively configure ./WORKSPACE for Android builds? [y/N]: n
+ #Please specify the location of python.: Accept the default option
+ #Please input the desired Python library path to use.: Accept the default option
+ #Do you wish to build TensorFlow with Google Cloud Platform support? [Y/n]: n
+ #Do you wish to build TensorFlow with Hadoop File System support? [Y/n]: n
+ #Do you wish to build TensorFlow with Amazon AWS Platform support? [Y/n]: n
+ #Do you wish to build TensorFlow with Apache Kafka Platform support? [Y/n]: n
+ #Do you wish to build TensorFlow with XLA JIT support? [y/N]: n
+ #Do you wish to build TensorFlow with GDR support? [y/N]: n
+ #Do you wish to build TensorFlow with VERBS support? [y/N]: n
+ #Do you wish to build TensorFlow with nGraph support? [y/N]: n
+ #Do you wish to build TensorFlow with OpenCL SYCL support? [y/N]: n
+ #Do you wish to build TensorFlow with CUDA support? [y/N]: y
+ #Please specify the CUDA SDK version you want to use.: 9.1
+ #Please specify the location where CUDA 9.1 toolkit is installed.: Accept the default option
+ #Please specify the cuDNN version you want to use.: 7
+ #Please specify the location where cuDNN 7 library is installed.: Accept the default option
+ ##Please specify a list of comma-separated Cuda compute capabilities you want to build with.
+ ##You can find the compute capability of your device at: https://developer.nvidia.com/cuda-gpus.(GTX10X0: 6.1, GTX9X0: 5.2)
+ #Please note that each additional compute capability significantly increases your build time and binary size.: 6.1
+ #Do you want to use clang as CUDA compiler? [y/N]: n
+ #Please specify which gcc should be used by nvcc as the host compiler. [Default is /usr/bin/gcc]: Accept the default option
+ #Do you wish to build TensorFlow with MPI support? [y/N]: n
+ #Please specify optimization flags to use during compilation when bazel option "--config=opt" is specified: Accept the default option
+ #Would you like to interactively configure ./WORKSPACE for Android builds? [y/N]: n
 
 export CUDA_HOME=/usr/local/cuda
 export DYLD_LIBRARY_PATH=/usr/local/cuda/lib:/usr/local/cuda/extras/CUPTI/lib
@@ -253,7 +261,7 @@ bazel build --config=cuda --config=opt --action_env PATH --action_env LD_LIBRARY
 
 ```sh
 bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
-pip install /tmp/tensorflow_pkg/tensorflow-1.5.0-cp36-cp36m-macosx_10_7_x86_64.whl
+pip install /tmp/tensorflow_pkg/tensorflow-1.11.0-cp36-cp36m-macosx_10_9_x86_64.whl
 ```
 
 ERRORS
